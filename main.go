@@ -6,10 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
-
-	"github.com/NorwegianKiwi-glitch/funtemps/conv"
 )
 
 func celsiusToFahrenheit(celsius float64) float64 {
@@ -17,6 +16,34 @@ func celsiusToFahrenheit(celsius float64) float64 {
 }
 
 func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for {
+		fmt.Print("> ")
+		if !scanner.Scan() {
+			// Scanner encountered an error or EOF
+			break
+		}
+		command := scanner.Text()
+
+		switch strings.ToLower(command) {
+		case "minyr":
+			// Kill all foreground processes
+			cmd := exec.Command("pkill", "-f", "")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to kill foreground processes: %v\n", err)
+			}
+		case "q", "quit":
+			// Exit the loop and terminate the program
+			fmt.Println("Exiting...")
+			return
+		default:
+			// Unknown command, print an error message
+			fmt.Println("Unknown command:", command)
+		}
+	}
 	// Define command-line flags
 	convertFlag := flag.Bool("convert", false, "convert temperature data from Celsius to Fahrenheit")
 	flag.Parse()
@@ -46,7 +73,7 @@ func main() {
 		inputScanner := bufio.NewScanner(inputFile)
 
 		// Create a new CSV writer to write the output CSV file
-		outputFile, err := os.Create("yr/kjevik-tempfahr-20220318-20230318.csv")
+		outputFile, err := os.Create("yr/kjevik-temp-fahr-20220318-20230318.csv")
 		if err != nil {
 			fmt.Println("Error creating output file:", err)
 			return
@@ -85,7 +112,7 @@ func main() {
 			lastDigit := temperature - float64(int(temperature/10))*10
 
 			// Convert Celsius to Fahrenheit
-			fahrenheit := CelsiusToFahrenheit(lastDigit)
+			fahrenheit := celsiusToFahrenheit(lastDigit)
 
 			// Replace the temperature in the fourth column with the converted value
 			temperatureString := strconv.FormatFloat(fahrenheit, 'f', 2, 64)
@@ -99,5 +126,17 @@ func main() {
 				continue
 			}
 		}
+
+		dataText := "Data er basert paa gyldig data (per 18.03.2023) (CC BY 4.0) fra Meteorologisk institutt (MET); endringen er gjort av Simon Helgen"
+		err = outputWriter.Write([]string{dataText})
+		if err != nil {
+			fmt.Println("Error writing data text to output file:", err)
+			return
+		}
+		fmt.Println("Temperature conversion complete.")
+		return
 	}
+	// Wait for user input
+	fmt.Println("Press enter to exit.")
+	fmt.Scanln()
 }
