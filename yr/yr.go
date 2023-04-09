@@ -7,13 +7,16 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	/*"github.com/NorwegianKiwi-glitch/funtemps/conv"*/)
 
-	"github.com/NorwegianKiwi-glitch/funtemps/conv"
-)
+// Convert Celsius to Fahrenheit
+func celsiusToFahrenheit(celsius float64) float64 {
+	return celsius*1.8 + 32
+}
 
 func Convert() error {
 	// Check if output file already exists
-	if _, err := os.Stat("kjevik-tempfahr-20220318-20230318.csv"); !os.IsNotExist(err) {
+	if _, err := os.Stat("yr/kjevik-temp-fahr-20220318-20230318.csv"); !os.IsNotExist(err) {
 		// Output file already exists, prompt user to regenerate
 		var regenerate string
 		fmt.Print("Output file already exists. Regenerate? (y/n): ")
@@ -44,7 +47,7 @@ func Convert() error {
 	outputWriter := csv.NewWriter(outputFile)
 	defer outputWriter.Flush()
 
-	// Skriv ut den første linjen fra inputfilen til outputfilen
+	// Prints out the first line of the input CSV file
 	if inputScanner.Scan() {
 		firstLine := inputScanner.Text()
 		if err = outputWriter.Write(strings.Split(firstLine, ";")); err != nil {
@@ -72,7 +75,8 @@ func Convert() error {
 		lastDigit := temperature - float64(int(temperature/10))*10
 
 		// Convert Celsius to Fahrenheit
-		fahrenheit := conv.CelsiusToFarenheit(lastDigit)
+		/*fahrenheit := conv.CelsiusToFarenheit(lastDigit)*/
+		fahrenheit := celsiusToFahrenheit(lastDigit)
 
 		// Replace the temperature in the fourth column with the converted value
 		temperatureString := strconv.FormatFloat(fahrenheit, 'f', 2, 64)
@@ -89,6 +93,134 @@ func Convert() error {
 
 	dataText := "Data er basert paa gyldig data (per 18.03.2023) (CC BY 4.0) fra Meteorologisk institutt (MET); endringen er gjort av Simon Helgen,,,"
 	err = outputWriter.Write([]string{dataText})
+	if err != nil {
+		fmt.Println("Error writing data text to output file:", err)
+
+	}
 
 	return nil
+}
+
+/*
+func Average(unit string) (float64, error) {
+	var filename string
+	var tempColumn int
+
+	if unit == "c" {
+		filename = "yr/kjevik-temp-celsius-20220318-20230318.csv"
+		tempColumn = 3
+	} else if unit == "f" {
+		filename = "yr/kjevik-temp-fahr-20220318-20230318.csv"
+		tempColumn = 3
+	} else {
+		return 0, fmt.Errorf("invalid temperature unit: %s", unit)
+	}
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ';'
+
+	var total float64
+	var count int
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+
+		if len(record) <= tempColumn {
+			return 0, fmt.Errorf("invalid data in file %s", filename)
+		}
+
+		temp, err := strconv.ParseFloat(record[tempColumn], 64)
+		if err != nil {
+			return 0, err
+		}
+
+		total += temp
+		count++
+	}
+
+	if count == 0 {
+		return 0, fmt.Errorf("no temperature data found in file %s", filename)
+	}
+
+	return total / float64(count), nil
+}*/
+
+func Average(unit string) (float64, error) {
+	var filename string
+	var tempColumn int
+	var delimiter rune
+
+	if unit == "c" {
+		filename = "yr/kjevik-temp-celsius-20220318-20230318.csv"
+		tempColumn = 3
+	} else if unit == "f" {
+		filename = "yr/kjevik-temp-fahr-20220318-20230318.csv"
+		tempColumn = 3
+	} else {
+		return 0, fmt.Errorf("invalid temperature unit: %s", unit)
+	}
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	// Try reading with ";" as delimiter
+	reader.Comma = ';'
+	records, err := reader.ReadAll()
+	if err != nil {
+		// Try reading with "," as delimiter
+		reader.Comma = ','
+		records, err = reader.ReadAll()
+		if err != nil {
+			return 0, fmt.Errorf("error reading file %s: %v", filename, err)
+		}
+		delimiter = ','
+	} else {
+		delimiter = ';'
+	}
+
+	var total float64
+	var count int
+
+	// Loop through the lines in the CSV file
+	for lineNumber, record := range records {
+		if lineNumber == 0 || lineNumber > 16755 {
+			// Skip the first and last line
+			continue
+		}
+
+		if len(record) <= tempColumn {
+			return 0, fmt.Errorf("invalid data in file %s", filename)
+		}
+
+		temp, err := strconv.ParseFloat(record[tempColumn], 64)
+		if err != nil {
+			return 0, err
+		}
+
+		total += temp
+		count++
+	}
+
+	if count == 0 {
+		return 0, fmt.Errorf("no temperature data found in file %s", filename)
+	}
+
+	return total / float64(count), nil
 }

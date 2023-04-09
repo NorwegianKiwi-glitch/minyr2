@@ -38,7 +38,16 @@ func main() {
 	}
 
 	if option == "average" {
-		fmt.Println("Average")
+		fmt.Print("Enter unit of measurement ('c' for Celsius or 'f' for Fahrenheit): ")
+		unit, _ := reader.ReadString('\n')
+		unit = strings.ToLower(strings.TrimSpace(unit))
+
+		avg, err := yr.Average(unit)
+		if err != nil {
+			fmt.Println("Error calculating average temperature:", err)
+			return
+		}
+		fmt.Printf("Average temperature: %.2f %s\n", avg, unit)
 	}
 
 	// Wait for user input
