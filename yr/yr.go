@@ -16,49 +16,57 @@ func celsiusToFahrenheit(celsius float64) float64 {
 }
 
 func Convert() error {
-	// Sjekker om output filen eksisterer
+	// Sjekker at output fil ikke eksisterer fra før av
 	if _, err := os.Stat("yr/kjevik-temp-fahr-20220318-20230318.csv"); !os.IsNotExist(err) {
-		// Output filen eksisterer allerede, spør brukeren om å regenerere
+		// Output file already exists, prompt user to regenerate
 		var regenerate string
-		fmt.Print("Output filen finnes allerede, ønsker du å regenerere denne? (y/n): ")
+		fmt.Print("Output filen eksisterer fra før av, ønsker du å regenerere filen? (y/n): ")
 		fmt.Scanln(&regenerate)
 		if regenerate != "y" && regenerate != "Y" {
-			fmt.Println("Avbryt uten å regenerere filen.")
+			fmt.Println("Avbrt uten å generere ny fil.")
 			return nil
 		}
 	}
 
-	// Åpner CSV filen
+	// Åpner input fil
 	inputFile, err := os.Open("yr/kjevik-temp-celsius-20220318-20230318.csv")
 	if err != nil {
-		fmt.Println("Feilet å åpne filen:", err)
+		fmt.Println("Feil input fil:", err)
 	}
 	defer inputFile.Close()
 
-	// Lager en ny scanner forå lese CSV filen
+	// Lager ny scanner for å lese input fil
 	inputScanner := bufio.NewScanner(inputFile)
 
-	// lager en ny CSV writer for å skrive til output filen
+	// lager en ny CSV writer for å skrive output fil
 	outputFile, err := os.Create("yr/kjevik-temp-fahr-20220318-20230318.csv")
 	if err != nil {
-		fmt.Println("Feiler å lage filen:", err)
+		fmt.Println("Feil generering av output fil:", err)
 	}
 	defer outputFile.Close()
 
 	outputWriter := csv.NewWriter(outputFile)
 	defer outputWriter.Flush()
 
-	// Skriver ut første linje i CSV filen
+	// Skriver ut første linje i input fil
 	if inputScanner.Scan() {
 		firstLine := inputScanner.Text()
 		if err = outputWriter.Write(strings.Split(firstLine, ";")); err != nil {
-			fmt.Println("Feiler å skrive første linje:", err)
+			fmt.Println("Feil under skriving av første linje:", err)
 		}
 	}
 
-	// Looper gjennom hver linje i CSV filen
+	// Looper gjennom hver linje i input fil
+	lineNum := 1 // Inisialiser teller for linjenummer
 	for inputScanner.Scan() {
-		// Deler linjen inn i felt
+		lineNum++ // Øk linjenummer teller
+
+		// Hopp over linje 2 og 16756
+		if lineNum == 2 || lineNum == 16756 {
+			continue
+		}
+
+		// Splitter linjen i felt
 		fields := strings.Split(inputScanner.Text(), ";")
 
 		// Sjekker at feltet har minst 4 elementer
@@ -67,27 +75,32 @@ func Convert() error {
 			continue
 		}
 
-		// Henter ut det siste tallet fra det fjerde feltet
+		// henter ut siste siffer i det 4 feltet
 		temperature, err := strconv.ParseFloat(fields[3], 64)
 		if err != nil {
-			fmt.Println("Feilet analysen av temratur:", err)
+			fmt.Println("Feil ved analyse av temperatur:", err)
 			continue
 		}
 		lastDigit := temperature - float64(int(temperature/10))*10
 
 		// Konverterer Celsius til Fahrenheit
-		/*fahrenheit := conv.CelsiusToFarenheit(lastDigit)*/
+		// Ekskulderer linjene 2 og 16756
+		if inputScanner.Text() == "" || inputScanner.Text() == "Observasjoner gitt i Norsk tid." || inputScanner.Text() == ";;;,celsius,fahrenheit;," || inputScanner.Text() == "2022-03-18;00:00;2022-03-18;00:00;1,2;4,4;39,9;103,8;" || inputScanner.Text() == "2023-03-18;00:00;2023-03-18;00:00;1,2;7,5;45,5;117,9;" || strings.HasPrefix(inputScanner.Text(), ";Observasjoner") || strings.HasPrefix(inputScanner.Text(), ";;;") {
+			continue
+		}
+
+		// Konverterer Celsius til Fahrenheit
 		fahrenheit := celsiusToFahrenheit(lastDigit)
 
-		// Erstatter temperaturen i det fjerde feltet med den konverterte verdien
+		// Erstatter det 4 feltet med den konverterte temperaturen
 		temperatureString := strconv.FormatFloat(fahrenheit, 'f', 2, 64)
 		temperatureParts := strings.Split(temperatureString, ".")
 		fields[3] = temperatureParts[0] + "." + string(temperatureParts[1][0])
 
-		// Skriver ut den oppdaterte linjen til output filen
+		// Skriver den oppdaterte linjen til output CSV filen
 		err = outputWriter.Write(fields)
 		if err != nil {
-			fmt.Println("Feilet å skrive siste linje til output filen:", err)
+			fmt.Println("Feil skriving av output linje til fil:", err)
 			continue
 		}
 	}
@@ -95,8 +108,7 @@ func Convert() error {
 	dataText := "Data er basert paa gyldig data (per 18.03.2023) (CC BY 4.0) fra Meteorologisk institutt (MET); endringen er gjort av Simon Helgen,,,"
 	err = outputWriter.Write([]string{dataText})
 	if err != nil {
-		fmt.Println("Feilet å skrive ut tekst til output filen:", err)
-
+		fmt.Println("Feil under skriving av data tekst til output fil:", err)
 	}
 
 	return nil
