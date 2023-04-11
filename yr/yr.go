@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -14,107 +15,6 @@ import (
 func celsiusToFahrenheit(celsius float64) float64 {
 	return celsius*1.8 + 32
 }
-
-/*
-func Convert() error {
-	// Sjekker at output fil ikke eksisterer fra før av
-	if _, err := os.Stat("yr/kjevik-temp-fahr-20220318-20230318.csv"); !os.IsNotExist(err) {
-		// Output file already exists, prompt user to regenerate
-		var regenerate string
-		fmt.Print("Output filen eksisterer fra før av, ønsker du å regenerere filen? (y/n): ")
-		fmt.Scanln(&regenerate)
-		if regenerate != "y" && regenerate != "Y" {
-			fmt.Println("Avbrt uten å generere ny fil.")
-			return nil
-		}
-	}
-
-	// Åpner input fil
-	inputFile, err := os.Open("yr/kjevik-temp-celsius-20220318-20230318.csv")
-	if err != nil {
-		fmt.Println("Feil input fil:", err)
-	}
-	defer inputFile.Close()
-
-	// Lager ny scanner for å lese input fil
-	inputScanner := bufio.NewScanner(inputFile)
-
-	// lager en ny CSV writer for å skrive output fil
-	outputFile, err := os.Create("yr/kjevik-temp-fahr-20220318-20230318.csv")
-	if err != nil {
-		fmt.Println("Feil generering av output fil:", err)
-	}
-	defer outputFile.Close()
-
-	outputWriter := csv.NewWriter(outputFile)
-	defer outputWriter.Flush()
-
-	// Skriver ut første linje i input fil
-	if inputScanner.Scan() {
-		firstLine := inputScanner.Text()
-		if err = outputWriter.Write(strings.Split(firstLine, ";")); err != nil {
-			fmt.Println("Feil under skriving av første linje:", err)
-		}
-	}
-
-	// Looper gjennom hver linje i input fil
-	lineNum := 1 // Inisialiser teller for linjenummer
-	for inputScanner.Scan() {
-		lineNum++ // Øk linjenummer teller
-
-		// Hopp over linje 2 og 16756
-		if lineNum == 2 || lineNum == 16756 {
-			continue
-		}
-
-		// Splitter linjen i felt
-		fields := strings.Split(inputScanner.Text(), ";")
-
-		// Sjekker at feltet har minst 4 elementer
-		if len(fields) < 4 {
-			fmt.Println("Feil: Ugyldig input format.")
-			continue
-		}
-
-		// henter ut siste siffer i det 4 feltet
-		temperature, err := strconv.ParseFloat(fields[3], 64)
-		if err != nil {
-			fmt.Println("Feil ved analyse av temperatur:", err)
-			continue
-		}
-		lastDigit := temperature - float64(int(temperature/10))*10
-
-		// Konverterer Celsius til Fahrenheit
-		// Ekskulderer linjene 2 og 16756
-		if inputScanner.Text() == "" || inputScanner.Text() == "Observasjoner gitt i Norsk tid." || inputScanner.Text() == ";;;,celsius,fahrenheit;," || inputScanner.Text() == "2022-03-18;00:00;2022-03-18;00:00;1,2;4,4;39,9;103,8;" || inputScanner.Text() == "2023-03-18;00:00;2023-03-18;00:00;1,2;7,5;45,5;117,9;" || strings.HasPrefix(inputScanner.Text(), ";Observasjoner") || strings.HasPrefix(inputScanner.Text(), ";;;") {
-			continue
-		}
-
-		// Konverterer Celsius til Fahrenheit
-		fahrenheit := celsiusToFahrenheit(lastDigit)
-
-		// Erstatter det 4 feltet med den konverterte temperaturen
-		temperatureString := strconv.FormatFloat(fahrenheit, 'f', 2, 64)
-		temperatureParts := strings.Split(temperatureString, ".")
-		fields[3] = temperatureParts[0] + "." + string(temperatureParts[1][0])
-
-		// Skriver den oppdaterte linjen til output CSV filen
-		err = outputWriter.Write(fields)
-		if err != nil {
-			fmt.Println("Feil skriving av output linje til fil:", err)
-			continue
-		}
-	}
-
-	dataText := "Data er basert paa gyldig data (per 18.03.2023) (CC BY 4.0) fra Meteorologisk institutt (MET); endringen er gjort av Simon Helgen,,,"
-	err = outputWriter.Write([]string{dataText})
-	if err != nil {
-		fmt.Println("Feil under skriving av data tekst til output fil:", err)
-	}
-
-	return nil
-}
-*/
 
 func Convert() error {
 	// Check if output file already exists
@@ -163,7 +63,7 @@ func Convert() error {
 		fields := strings.Split(inputScanner.Text(), ";")
 
 		// Check that the fields slice has at least 4 elements
-		if len(fields) < 4 {
+		if len(fields) != 4 {
 			fmt.Println("Error: Invalid input format.")
 			continue
 		}
@@ -179,10 +79,16 @@ func Convert() error {
 			fmt.Println("Error parsing temperature:", err)
 			continue
 		}
+
+		if math.IsNaN(temperature) {
+			fmt.Println("Error: Temperature is not a valid float64 value.")
+			continue
+		}
+
 		lastDigit := temperature - float64(int(temperature/10))*10
 
 		// Convert Celsius to Fahrenheit
-		/*fahrenheit := conv.CelsiusToFarenheit(lastDigit)*/
+		// fahrenheit := conv.CelsiusToFarenheit(lastDigit) //
 		fahrenheit := celsiusToFahrenheit(lastDigit)
 
 		// Replace the temperature in the fourth column with the converted value
