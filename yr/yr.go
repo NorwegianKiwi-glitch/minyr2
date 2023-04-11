@@ -16,6 +16,7 @@ func celsiusToFahrenheit(celsius float64) float64 {
 	return celsius*1.8 + 32
 }
 
+/*
 func Convert() error {
 	// Check if output file already exists
 	if _, err := os.Stat("yr/kjevik-temp-fahr-20220318-20230318.csv"); !os.IsNotExist(err) {
@@ -58,30 +59,30 @@ func Convert() error {
 	}
 
 	// Loop through each line of the input CSV file
+	lineNo := 2 // Start at line 2 because the first line has already been read
 	for inputScanner.Scan() {
 		// Split the line into fields
 		fields := strings.Split(inputScanner.Text(), ";")
 
 		// Check that the fields slice has at least 4 elements
 		if len(fields) != 4 {
-			fmt.Println("Error: Invalid input format.")
+			fmt.Printf("Error on line %d: Invalid input format.\n", lineNo)
 			continue
 		}
 
 		// Extract the last digit from the fourth column
 		temperatureField := fields[3]
 		if temperatureField == "" {
-			fmt.Println("Error: Temperature value is empty.")
+			fmt.Printf("Error on line %d: Temperature value is empty.\n", lineNo)
 			continue
 		}
 		temperature, err := strconv.ParseFloat(temperatureField, 64)
 		if err != nil {
-			fmt.Println("Error parsing temperature:", err)
+			fmt.Printf("Error on line %d: %v\n", lineNo, err)
 			continue
 		}
-
 		if math.IsNaN(temperature) {
-			fmt.Println("Error: Temperature is not a valid float64 value.")
+			fmt.Printf("Error on line %d: Temperature is not a valid float64 value.\n", lineNo)
 			continue
 		}
 
@@ -91,17 +92,104 @@ func Convert() error {
 		// fahrenheit := conv.CelsiusToFarenheit(lastDigit) //
 		fahrenheit := celsiusToFahrenheit(lastDigit)
 
-		// Replace the temperature in the fourth column with the converted value
-		temperatureString := strconv.FormatFloat(fahrenheit, 'f', 2, 64)
-		temperatureParts := strings.Split(temperatureString, ".")
-		fields[3] = temperatureParts[0] + "." + string(temperatureParts[1][0])
+		// Write the output to the CSV file
+		fields[3] = fmt.Sprintf("%.1f", fahrenheit)
+		if err = outputWriter.Write(fields); err != nil {
+			fmt.Println("Error writing to output file:", err)
+			return err
+		}
 
-		// Write the updated line to the output CSV file
-		err = outputWriter.Write(fields)
-		if err != nil {
-			fmt.Println("Error writing line to output file:", err)
+		lineNo++
+	} */
+
+func Convert() error {
+	// Check if output file already exists
+	if _, err := os.Stat("yr/kjevik-temp-fahr-20220318-20230318.csv"); !os.IsNotExist(err) {
+		// Output file already exists, prompt user to regenerate
+		var regenerate string
+		fmt.Print("Output file already exists. Regenerate? (y/n): ")
+		fmt.Scanln(&regenerate)
+		if regenerate != "y" && regenerate != "Y" {
+			fmt.Println("Exiting without generating new file.")
+			return nil
+		}
+	}
+
+	// Open the input CSV file
+	inputFile, err := os.Open("yr/kjevik-temp-celsius-20220318-20230318.csv")
+	if err != nil {
+		fmt.Println("Error opening input file:", err)
+	}
+	defer inputFile.Close()
+
+	// Create a new scanner to read the input CSV file
+	inputScanner := bufio.NewScanner(inputFile)
+
+	// Create a new CSV writer to write the output CSV file
+	outputFile, err := os.Create("yr/kjevik-temp-fahr-20220318-20230318.csv")
+	if err != nil {
+		fmt.Println("Error creating output file:", err)
+	}
+	defer outputFile.Close()
+
+	outputWriter := csv.NewWriter(outputFile)
+	defer outputWriter.Flush()
+
+	// Prints out the first line of the input CSV file
+	if inputScanner.Scan() {
+		firstLine := inputScanner.Text()
+		if err = outputWriter.Write(strings.Split(firstLine, ";")); err != nil {
+			fmt.Println("Error writing first line:", err)
+		}
+	}
+
+	// Loop through each line of the input CSV file
+	lineNo := 2 // Start at line 2 because the first line has already been read
+	for inputScanner.Scan() {
+		// Check if line number exceeds 16755 and break out of the loop if it does
+		if lineNo > 16755 {
+			break
+		}
+
+		// Split the line into fields
+		fields := strings.Split(inputScanner.Text(), ";")
+
+		// Check that the fields slice has at least 4 elements
+		if len(fields) != 4 {
+			fmt.Printf("Error on line %d: Invalid input format.\n", lineNo)
 			continue
 		}
+
+		// Extract the last digit from the fourth column
+		temperatureField := fields[3]
+		if temperatureField == "" {
+			fmt.Printf("Error on line %d: Temperature value is empty.\n", lineNo)
+			continue
+		}
+		temperature, err := strconv.ParseFloat(temperatureField, 64)
+		if err != nil {
+			fmt.Printf("Error on line %d: %v\n", lineNo, err)
+			continue
+		}
+		if math.IsNaN(temperature) {
+			fmt.Printf("Error on line %d: Temperature is not a valid float64 value.\n", lineNo)
+			continue
+		}
+
+		lastDigit := temperature - float64(int(temperature/10))*10
+
+		// Convert Celsius to Fahrenheit
+		// fahrenheit := conv.CelsiusToFarenheit(lastDigit) //
+		fahrenheit := celsiusToFahrenheit(lastDigit)
+
+		// Write the output to the CSV file
+		fields[3] = fmt.Sprintf("%.1f", fahrenheit)
+		if err = outputWriter.Write(fields); err != nil {
+			fmt.Println("Error writing to output file:", err)
+			return err
+		}
+
+		lineNo++
 	}
 
 	dataText := "Data er basert paa gyldig data (per 18.03.2023) (CC BY 4.0) fra Meteorologisk institutt (MET); endringen er gjort av Simon Helgen,,,"
