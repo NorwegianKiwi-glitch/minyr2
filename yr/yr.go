@@ -56,7 +56,7 @@ func Convert() error {
 		}
 	}
 
-	// Loop gjennom hver linje i input csv filen
+	// Looper gjennom hver linje i input csv filen
 	lineNo := 2 // Starter på linje 2 siden linje 1 allerede er skrevet
 	for inputScanner.Scan() {
 		// Sjekker om linje nummer overstiger 16755 og bryter ut av loopen hvis det gjør det
@@ -89,7 +89,7 @@ func Convert() error {
 			continue
 		}
 
-		lastDigit := temperature - float64(int(temperature/10))*10
+		lastDigit := temperature
 
 		// Konverterer Celsius til Fahrenheit
 		// fahrenheit := conv.CelsiusToFarenheit(lastDigit) //
